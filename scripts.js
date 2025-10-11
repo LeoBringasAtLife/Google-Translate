@@ -1,17 +1,8 @@
 import { $ } from './dom.js'
 
 class GoogleTranslator {
-    static SUPPORTED_LANGUAGES = [
-        'en',
-        'es',
-        'fr',
-        'de',
-        'it',
-        'pt',
-        'ru',
-        'ja',
-        'zh'
-    ]
+    // CONFIGURACIÓN IDIOMAS
+    static SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'ja', 'zh']
 
     static FULL_LANGUAGES_CODES = {
         es: 'es-ES',
@@ -28,6 +19,7 @@ class GoogleTranslator {
     static DEFAULT_SOURCE_LANGUAGE = 'es'
     static DEFAULT_TARGET_LANGUAGE = 'en'
 
+    // INICIALIZACIÓN
     constructor() {
         this.init()
         this.setupEventListeners()
@@ -39,125 +31,85 @@ class GoogleTranslator {
     }
 
     init() {
-        // Recuperamos todos los elementos del DOM que necesitamos
+        // Elementos del DOM
         this.inputText = $('#inputText')
         this.outputText = $('#outputText')
-
         this.sourceLanguage = $('#sourceLanguage')
         this.targetLanguage = $('#targetLanguage')
-
         this.micButton = $('#micButton')
         this.copyButton = $('#copyButton')
         this.speakerButton = $('#speakerButton')
         this.swapLanguagesButton = $('#swapLanguages')
+        this.clearButton = $('#clearButton')
 
         // Configuración inicial
         this.targetLanguage.value = GoogleTranslator.DEFAULT_TARGET_LANGUAGE
 
-        // Verificar que el usuario tiene soporte para la API de traducción
+        // Verificar soporte API
         this.checkAPISupport()
     }
 
+    // VERIFICACIÓN DE APIs
     checkAPISupport() {
-        this.hasNativeTranslator = "Translator" in window
-        this.hasNativeDetector = "LanguageDetector" in window
+        this.hasNativeTranslator = 'Translator' in window
+        this.hasNativeDetector = 'LanguageDetector' in window
 
         if (!this.hasNativeTranslator || !this.hasNativeDetector) {
-            console.warn("APIs nativas de traducción y detección de idioma NO soportadas en tu navegador.")
+            console.warn('⚠️ APIs nativas de traducción o detección NO soportadas.')
             this.showAPIWarning()
-        } else {
-            console.log('✅ APIs nativas de IA disponibles')
+            return false
         }
+
+        console.log('✅ APIs nativas de IA disponibles')
+        return true
     }
 
-    // Mostrar aviso de que las APIs nativas no están disponibles
     showAPIWarning() {
-        const warning = $("#apiWarning")
-        warning.style.display = "block"
+        const warning = $('#apiWarning')
+        warning.style.display = 'block'
     }
 
+    // EVENTOS
     setupEventListeners() {
-        this.inputText.addEventListener('input', () => {
-            // actualizar el contador de letras
-            this.debounceTranslate()
-        })
-
+        this.inputText.addEventListener('input', () => this.debounceTranslate())
         this.sourceLanguage.addEventListener('change', () => this.translate())
         this.targetLanguage.addEventListener('change', () => this.translate())
 
         this.swapLanguagesButton.addEventListener('click', () => this.swapLanguages())
         this.micButton.addEventListener('click', () => this.startVoiceRecognition())
         this.speakerButton.addEventListener('click', () => this.speakTranslation())
+
+
+        this.clearButton.addEventListener('click', () => this.clearText())
     }
 
+    // ClearButton
+    clearText() {
+        this.inputText.value = ''
+        this.outputText.textContent = ''
+        this.sourceLanguage.value = GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
+        this.targetLanguage.value = GoogleTranslator.DEFAULT_TARGET_LANGUAGE
+
+        // Restablecer texto de "Detectar idioma"
+        const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
+        if (autoOption) autoOption.textContent = 'Detectar idioma'
+
+        console.log('Campos borrados.')
+
+
+    }
+
+    // FUNCIONES DE TRADUCCIÓN
     debounceTranslate() {
         clearTimeout(this.translationTimeout)
-        this.translationTimeout = setTimeout(() => {
-            this.translate()
-        }, 500)
+        this.translationTimeout = setTimeout(() => this.translate(), 500)
     }
 
     updateDetectedLanguage(detectedLanguage) {
-        // Actualizar visualmente el idioma detectado
         const option = this.sourceLanguage.querySelector(`option[value="${detectedLanguage}"]`)
-
         if (option) {
             const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
             autoOption.textContent = `Detectar idioma (${option.textContent})`
-        }
-    }
-
-    async getTranslation(text) {
-        const sourceLanguage = this.sourceLanguage.value === 'auto'
-            ? await this.detectLanguage(text)
-            : this.sourceLanguage.value
-
-        const targetLanguage = this.targetLanguage.value
-
-        if (sourceLanguage === targetLanguage) return text
-
-        // 1. Revisar o verificar si realmente tenemos disponibilidad de esta traducción entre origen y destino
-        try {
-            const status = await window.Translator.availability({
-                sourceLanguage,
-                targetLanguage
-            })
-
-            if (status === 'unavailable') {
-                throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
-            }
-        } catch (error) {
-            console.error(error)
-
-            throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
-        }
-
-        // 2. Realizar la traducción
-        const translatorKey = `${sourceLanguage}-${targetLanguage}`
-
-        try {
-            if (
-                !this.currentTranslator ||
-                this.currentTranslatorKey !== translatorKey
-            ) {
-                this.currentTranslator = await window.Translator.create({
-                    sourceLanguage,
-                    targetLanguage,
-                    monitor: (monitor) => {
-                        monitor.addEventListener("downloadprogress", (e) => {
-                            this.outputText.innerHTML = `<span class="loading">Descargando modelo: ${Math.floor(e.loaded * 100)}%</span>`
-                        })
-                    }
-                })
-            }
-
-            this.currentTranslatorKey = translatorKey
-
-            const translation = await this.currentTranslator.translate(text)
-            return translation
-        } catch (error) {
-            console.error(error)
-            return 'Error al traducir'
         }
     }
 
@@ -181,87 +133,117 @@ class GoogleTranslator {
         } catch (error) {
             console.error(error)
             const hasSupport = this.checkAPISupport()
-            if (!hasSupport) {
-                this.outputText.textContent = '¡Error! No tienes soporte nativo a la API de traducción con IA'
-                return
-            }
-
-            this.outputText.textContent = 'Error al traducir'
+            this.outputText.textContent = hasSupport
+                ? 'Error al traducir'
+                : '¡Error! No tienes soporte nativo a la API de traducción con IA'
         }
     }
 
+    async getTranslation(text) {
+        const sourceLanguage =
+            this.sourceLanguage.value === 'auto'
+                ? await this.detectLanguage(text)
+                : this.sourceLanguage.value
+
+        const targetLanguage = this.targetLanguage.value
+        if (sourceLanguage === targetLanguage) return text
+
+        // 1️. Verificar disponibilidad del modelo
+        try {
+            const status = await window.Translator.availability({ sourceLanguage, targetLanguage })
+            if (status === 'unavailable') throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
+        } catch (error) {
+            console.error(error)
+            throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
+        }
+
+        // 2️. Realizar la traducción
+        const translatorKey = `${sourceLanguage}-${targetLanguage}`
+
+        try {
+            if (!this.currentTranslator || this.currentTranslatorKey !== translatorKey) {
+                this.currentTranslator = await window.Translator.create({
+                    sourceLanguage,
+                    targetLanguage,
+                    monitor: (monitor) => {
+                        monitor.addEventListener('downloadprogress', (e) => {
+                            this.outputText.innerHTML = `<span class="loading">
+                                Descargando modelo: ${Math.floor(e.loaded * 100)}%
+                            </span>`
+                        })
+                    }
+                })
+            }
+
+            this.currentTranslatorKey = translatorKey
+            return await this.currentTranslator.translate(text)
+        } catch (error) {
+            console.error(error)
+            return 'Error al traducir'
+        }
+    }
+
+    // INTERCAMBIO DE IDIOMAS
     async swapLanguages() {
-        // primero, detectar si source es 'auto' para saber qué idioma
-        // hay que pasar al output
         if (this.sourceLanguage.value === 'auto') {
             const detectedLanguage = await this.detectLanguage(this.inputText.value)
             this.sourceLanguage.value = detectedLanguage
         }
 
-        // intercambiar los valores
-        const temporalLanguage = this.sourceLanguage.value
+        const temp = this.sourceLanguage.value
         this.sourceLanguage.value = this.targetLanguage.value
-        this.targetLanguage.value = temporalLanguage
+        this.targetLanguage.value = temp
 
-        // intercambiar los textos
-        this.inputText.value = this.outputText.value
-        this.outputText.value = ""
+        this.inputText.value = this.outputText.textContent
+        this.outputText.textContent = ''
 
-        if (this.inputText.value.trim()) {
-            this.translate()
-        }
-
-        // restaurar la opción de auto-detectar
+        if (this.inputText.value.trim()) this.translate()
     }
 
-    getFullLanguageCode(languageCode) {
-        return GoogleTranslator.FULL_LANGUAGES_CODES[languageCode] ?? GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
+    // VOZ / AUDIO
+    getFullLanguageCode(lang) {
+        return GoogleTranslator.FULL_LANGUAGES_CODES[lang] ?? GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
     }
 
     async startVoiceRecognition() {
-        const hasNativeRecognitionSupport = "SpeechRecognition" in window || "webkitSpeechRecognition" in window
-        if (!hasNativeRecognitionSupport) return
+        const hasRecognition = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
+        if (!hasRecognition) return
 
         const SpeechRecognition = window.SpeechRecognition ?? window.webkitSpeechRecognition
         const recognition = new SpeechRecognition()
-
         recognition.continuous = false
         recognition.interimResults = false
 
-        const language = this.sourceLanguage.value === 'auto'
-            ? await this.detectLanguage(this.inputText.value)
-            : this.sourceLanguage.value
+        const lang =
+            this.sourceLanguage.value === 'auto'
+                ? await this.detectLanguage(this.inputText.value)
+                : this.sourceLanguage.value
 
-        recognition.lang = this.getFullLanguageCode(language)
+        recognition.lang = this.getFullLanguageCode(lang)
 
         recognition.onstart = () => {
-            this.micButton.style.backgroundColor = "var(--google-red)"
-            this.micButton.style.color = "white"
+            this.micButton.style.backgroundColor = 'var(--google-red)'
+            this.micButton.style.color = 'white'
         }
 
         recognition.onend = () => {
-            this.micButton.style.backgroundColor = ""
-            this.micButton.style.color = ""
+            this.micButton.style.backgroundColor = ''
+            this.micButton.style.color = ''
         }
 
         recognition.onresult = (event) => {
-            console.log(event.results)
-
             const [{ transcript }] = event.results[0]
             this.inputText.value = transcript
             this.translate()
         }
 
-        recognition.onerror = (event) => {
-            console.error('Error de reconocimiento de voz: ', event.error)
-        }
-
+        recognition.onerror = (event) => console.error('Error de reconocimiento de voz:', event.error)
         recognition.start()
     }
 
     speakTranslation() {
-        const hasNativeSupportSynthesis = "SpeechSynthesis" in window
-        if (!hasNativeSupportSynthesis) return
+        const hasSpeech = 'speechSynthesis' in window
+        if (!hasSpeech) return
 
         const text = this.outputText.textContent
         if (!text) return
@@ -271,18 +253,19 @@ class GoogleTranslator {
         utterance.rate = 0.8
 
         utterance.onstart = () => {
-            this.speakerButton.style.backgroundColor = "var(--google-green)"
-            this.speakerButton.style.color = "white"
+            this.speakerButton.style.backgroundColor = 'var(--google-green)'
+            this.speakerButton.style.color = 'white'
         }
 
         utterance.onend = () => {
-            this.speakerButton.style.backgroundColor = ""
-            this.speakerButton.style.color = ""
+            this.speakerButton.style.backgroundColor = ''
+            this.speakerButton.style.color = ''
         }
 
         window.speechSynthesis.speak(utterance)
     }
 
+    // DETECCIÓN DE IDIOMA
     async detectLanguage(text) {
         try {
             if (!this.currentDetector) {
@@ -292,14 +275,17 @@ class GoogleTranslator {
             }
 
             const results = await this.currentDetector.detect(text)
-            const detectedLanguage = results[0]?.detectedLanguage
+            const detected = results[0]?.detectedLanguage
 
-            return detectedLanguage === 'und' ? GoogleTranslator.DEFAULT_SOURCE_LANGUAGE : detectedLanguage
+            return detected === 'und'
+                ? GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
+                : detected
         } catch (error) {
-            console.error("No he podido averiguar el idioma: ", error)
+            console.error('No he podido averiguar el idioma:', error)
             return GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
         }
     }
 }
 
+// INICIALIZAR
 const googleTranslator = new GoogleTranslator()

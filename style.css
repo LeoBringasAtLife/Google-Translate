@@ -1,49 +1,53 @@
 :root {
-    /* Google Brand Colors */
-    --google-blue: #4285f4;
-    --google-red: #ea4335;
-    --google-yellow: #fbbc05;
-    --google-green: #34a853;
+    --blue-g: #6A67CE;
+    --red-o1: #FF6B8B;
+    --yellow-o2: #FFD166;
+    --green-g: #1EA896;
+    --violet-e: #9D4EDD;
 
-    /* Text Colors */
-    --text-primary: #3c4043;
-    --text-secondary: #5f6368;
-    --text-tertiary: #9aa0a6;
+    /* Colores de texto */
+    --text-primary: #2d3436;
+    --text-secondary: #636e72;
+    --text-tertiary: #b2bec3;
 
-    /* Background Colors */
-    --bg-primary: white;
-    --bg-secondary: #f8f9fa;
-    --bg-hover: #f1f3f4;
+    /* Fondos */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f6fa;
+    --bg-hover: #eaecef;
 
-    /* Border Colors */
-    --border-primary: #e8eaed;
-    --border-secondary: #dadce0;
+    /* Bordes */
+    --border-primary: #dfe6e9;
+    --border-secondary: #b2bec3;
 
-    /* State Colors */
-    --color-focus: #1a73e8;
+    /* Estados */
+    --color-focus: #6c5ce7;
     --color-success: var(--google-green);
-    --color-warning: var(--google-yellow);
+    --color-warning: #ffeaa7;
     --color-error: var(--google-red);
 
-    /* Warning Colors */
-    --warning-bg: #fff3cd;
-    --warning-text: #856404;
-    --warning-border: #ffeaa7;
+    /* Banner de advertencia */
+    --warning-bg: #fff8e1;
+    --warning-text: #8d6e63;
+    --warning-border: #ffe082;
 }
 
-* {
+*,
+*:before,
+*:after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* BODY */
 body {
-    font-family: 'Google Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Google Sans', sans-serif;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     line-height: 1.5;
 }
 
+/* CONTENEDOR PRINCIPAL */
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -51,8 +55,7 @@ body {
     min-height: 100vh;
 }
 
-/* Header */
-
+/* HEADER */
 .header {
     border-bottom: 1px solid var(--border-primary);
     padding: 16px 24px;
@@ -65,58 +68,61 @@ body {
 }
 
 .logo {
-    font-size: 22px;
-    font-weight: 400;
     display: flex;
     align-items: center;
+    font-size: 22px;
+    font-weight: 400;
 }
 
-.google-g {
-    color: var(--google-blue);
+/* Logo de 'Google' */
+.g {
+    color: var(--blue-g);
 }
 
-.google-o1 {
-    color: var(--google-red);
+.o1 {
+    color: var(--red-o1);
 }
 
-.google-o2 {
-    color: var(--google-yellow);
+.o2 {
+    color: var(--yellow-o2);
 }
 
-.google-l {
-    color: var(--google-green);
+.g {
+    color: var(--green-g);
 }
 
-.google-e {
-    color: var(--google-red);
+.e {
+    color: var(--violet-e);
 }
 
 .traductor {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     margin-left: 4px;
 }
 
-/* Language Selection */
+/* BOTONES / ICONOS */
 .icon-button {
     display: flex;
     align-items: center;
-    border: 0;
+    justify-content: center;
+    border: none;
     background: none;
     cursor: pointer;
     color: var(--text-secondary);
     border-radius: 50%;
-    transition: background-color .2s, transform .2s;
+    transition: background-color 0.2s, transform 0.2s;
     padding: 6px;
-
-    &:hover {
-        background: var(--bg-hover);
-    }
-
-    &:active {
-        scale: .9;
-    }
 }
 
+.icon-button:hover {
+    background: var(--bg-hover);
+}
+
+.icon-button:active {
+    transform: scale(0.9);
+}
+
+/* SELECCIÓN DE IDIOMAS */
 .language-selection {
     display: flex;
     align-items: center;
@@ -139,20 +145,20 @@ select {
     font-size: 14px;
     color: var(--text-primary);
     cursor: pointer;
-    transition: border-color .2s;
-
-    &:hover {
-        border-color: var(--text-secondary);
-    }
-
-    &:focus {
-        outline: none;
-        border-color: var(--google-blue);
-        box-shadow: 0 0 0 2px var(--google-blue);
-    }
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-/* Input and Output translations */
+select:hover {
+    border-color: var(--text-secondary);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--google-blue);
+    box-shadow: 0 0 0 1px var(--google-blue);
+}
+
+/* ÁREA DE TRADUCCIÓN*/
 .translation-area {
     display: flex;
     height: 250px;
@@ -170,6 +176,7 @@ select {
     border-right: 1px solid var(--border-primary);
 }
 
+/* TEXTAREAS */
 .textarea-container {
     flex: 1;
     display: flex;
@@ -179,16 +186,16 @@ select {
 
 #inputText {
     flex: 1;
-    border: 0;
+    border: none;
     padding: 24px;
     font: inherit;
     resize: none;
     outline: none;
     font-size: 18px;
+}
 
-    &::placeholder {
-        color: var(--text-secondary);
-    }
+#inputText::placeholder {
+    color: var(--text-secondary);
 }
 
 #outputText {
@@ -198,13 +205,14 @@ select {
     color: var(--text-primary);
     background-color: var(--bg-secondary);
     overflow-y: auto;
-
-    &:empty::before {
-        content: "Traducción";
-        color: var(--text-secondary);
-    }
 }
 
+#outputText:empty::before {
+    content: "Traducción";
+    color: var(--text-secondary);
+}
+
+/* CONTROLES */
 .input-controls,
 .output-controls {
     display: flex;
@@ -218,7 +226,7 @@ select {
     background-color: var(--bg-secondary);
 }
 
-/* API Warning */
+/* ADVERTENCIA API */
 .api-warning {
     background: var(--warning-bg);
     color: var(--warning-text);
