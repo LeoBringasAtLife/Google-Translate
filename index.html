@@ -5,21 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traductor Inteligente</title>
-
-    <!-- Fuentes -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-
-    <!-- Estilos y scripts -->
     <link rel="stylesheet" href="style.css">
     <script type="module" src="scripts.js"></script>
 </head>
 
 <body>
     <div class="container">
-
-        <!-- Header -->
         <header class="header">
             <div class="header-content">
                 <div class="logo">
@@ -34,12 +25,10 @@
             </div>
         </header>
 
-        <!-- Advertencia -->
         <div id="apiWarning" class="api-warning" style="display: none;">
-            ⚠️ API no disponible. Algunas funciones pueden estar limitadas.
+            API no disponible. Algunas funciones pueden estar limitadas.
         </div>
 
-        <!-- Selector de idiomas -->
         <section class="language-selection">
             <div class="select-wrapper">
                 <label for="sourceLanguage">De:</label>
@@ -51,8 +40,6 @@
                     <option value="de">Alemán</option>
                     <option value="it">Italiano</option>
                     <option value="pt">Portugués</option>
-                    <option value="ru">Ruso</option>
-                    <option value="ja">Japonés</option>
                     <option value="zh">Chino</option>
                 </select>
             </div>
@@ -70,17 +57,12 @@
                     <option value="de">Alemán</option>
                     <option value="it">Italiano</option>
                     <option value="pt">Portugués</option>
-                    <option value="ru">Ruso</option>
-                    <option value="ja">Japonés</option>
                     <option value="zh">Chino</option>
                 </select>
             </div>
         </section>
 
-        <!-- Área principal -->
         <main class="translation-area">
-
-            <!-- Entrada -->
             <section class="input-section">
                 <div class="textarea-container">
                     <textarea id="inputText" placeholder="Escribe o pega el texto aquí..." maxlength="5000"></textarea>
@@ -95,7 +77,6 @@
                 </footer>
             </section>
 
-            <!-- Salida -->
             <section class="output-section">
                 <div class="textarea-container">
                     <output id="outputText"></output>
@@ -112,5 +93,4 @@
         </main>
     </div>
 </body>
-
 </html>
