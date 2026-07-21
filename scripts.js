@@ -2,7 +2,7 @@ import { $ } from './dom.js'
 
 class GoogleTranslator {
     // CONFIGURACIÓN IDIOMAS
-    static SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'ja', 'zh']
+    static SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh']
 
     static FULL_LANGUAGES_CODES = {
         es: 'es-ES',
@@ -18,19 +18,28 @@ class GoogleTranslator {
     static DEFAULT_SOURCE_LANGUAGE = 'es'
     static DEFAULT_TARGET_LANGUAGE = 'en'
 
+    static ERROR_MESSAGES = {
+        NETWORK: 'Error de conexión. Verifica tu internet.',
+        API_UNAVAILABLE: 'API de traducción no disponible en este navegador.',
+        MODEL_UNAVAILABLE: 'Modelo de traducción no disponible para este par de idiomas.',
+        FALLBACK_FAILED: 'El servicio de respaldo también falló.',
+        GENERIC: 'Error al traducir. Intenta de nuevo.',
+    }
+
     constructor() {
         this.init()
         this.setupEventListeners()
 
         this.translationTimeout = null
-        this.currentTranslator = null
-        this.currentTranslatorKey = null
+        this.translatorPool = new Map()
         this.currentDetector = null
+        this.translationCache = null
     }
 
     init() {
         this.inputText = $('#inputText')
         this.outputText = $('#outputText')
+        this.detectedLangBadge = $('#detectedLangBadge')
         this.sourceLanguage = $('#sourceLanguage')
         this.targetLanguage = $('#targetLanguage')
         this.micButton = $('#micButton')
@@ -38,9 +47,16 @@ class GoogleTranslator {
         this.speakerButton = $('#speakerButton')
         this.swapLanguagesButton = $('#swapLanguages')
         this.clearButton = $('#clearButton')
+        this.themeToggle = $('#themeToggle')
+        this.charCounter = $('#charCounter')
+        this.historyToggle = $('#historyToggle')
+        this.historyPanel = $('#historyPanel')
 
         this.targetLanguage.value = GoogleTranslator.DEFAULT_TARGET_LANGUAGE
 
+        this.initTheme()
+        this.initCache()
+        this.renderHistory()
         this.checkAPISupport()
     }
 
@@ -63,17 +79,84 @@ class GoogleTranslator {
         warning.style.display = 'block'
     }
 
+    initTheme() {
+        const saved = localStorage.getItem('theme')
+        if (saved === 'dark') {
+            document.body.classList.add('dark')
+            this.themeToggle.innerHTML = '<span class="material-symbols-outlined">light_mode</span>'
+        }
+    }
+
+    toggleTheme() {
+        const isDark = document.body.classList.toggle('dark')
+        this.themeToggle.innerHTML = isDark
+            ? '<span class="material-symbols-outlined">light_mode</span>'
+            : '<span class="material-symbols-outlined">dark_mode</span>'
+        localStorage.setItem('theme', isDark ? 'dark' : 'light')
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            const isCtrl = e.ctrlKey || e.metaKey
+            if (!isCtrl) return
+
+            switch (e.key.toLowerCase()) {
+                case 'enter':
+                    e.preventDefault()
+                    this.translate()
+                    break
+                case 'l':
+                    e.preventDefault()
+                    this.clearText()
+                    break
+                case 'm':
+                    e.preventDefault()
+                    this.startVoiceRecognition()
+                    break
+            }
+
+            if (isCtrl && e.shiftKey && e.key.toLowerCase() === 'c') {
+                e.preventDefault()
+                this.copyTranslation()
+            }
+        })
+    }
+
+    copyTranslation() {
+        const text = this.outputText.textContent
+        if (!text || text === 'Traduciendo...') return
+        navigator.clipboard.writeText(text)
+        this.copyButton.style.backgroundColor = 'var(--google-green)'
+        this.copyButton.style.color = 'white'
+        setTimeout(() => {
+            this.copyButton.style.backgroundColor = ''
+            this.copyButton.style.color = ''
+        }, 600)
+    }
+
+    updateCharCounter() {
+        const len = this.inputText.value.length
+        this.charCounter.textContent = `${len} / 5000`
+    }
+
     setupEventListeners() {
-        this.inputText.addEventListener('input', () => this.debounceTranslate())
+        this.inputText.addEventListener('input', () => {
+            this.updateCharCounter()
+            this.debounceTranslate()
+        })
         this.sourceLanguage.addEventListener('change', () => this.translate())
         this.targetLanguage.addEventListener('change', () => this.translate())
 
         this.swapLanguagesButton.addEventListener('click', () => this.swapLanguages())
         this.micButton.addEventListener('click', () => this.startVoiceRecognition())
         this.speakerButton.addEventListener('click', () => this.speakTranslation())
-
+        this.copyButton.addEventListener('click', () => this.copyTranslation())
+        this.themeToggle.addEventListener('click', () => this.toggleTheme())
+        this.historyToggle.addEventListener('click', () => this.toggleHistory())
 
         this.clearButton.addEventListener('click', () => this.clearText())
+
+        this.setupKeyboardShortcuts()
     }
 
     clearText() {
@@ -84,33 +167,38 @@ class GoogleTranslator {
 
         const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
         if (autoOption) autoOption.textContent = 'Detectar idioma'
-
-        console.log('Campos borrados.')
+        this.detectedLangBadge.textContent = ''
 
 
     }
 
     debounceTranslate() {
         clearTimeout(this.translationTimeout)
-        this.translationTimeout = setTimeout(() => this.translate(), 500)
+        this.translationTimeout = setTimeout(() => this.translate(), 300)
     }
 
     updateDetectedLanguage(detectedLanguage) {
         const option = this.sourceLanguage.querySelector(`option[value="${detectedLanguage}"]`)
+        const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
         if (option) {
-            const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
             autoOption.textContent = `Detectar idioma (${option.textContent})`
+        } else {
+            autoOption.textContent = `Detectar idioma (${detectedLanguage} - no soportado)`
         }
+        this.detectedLangBadge.textContent = option
+            ? `Detectado: ${option.textContent}`
+            : `Idioma no soportado: ${detectedLanguage}`
     }
 
     async translate() {
         const text = this.inputText.value.trim()
         if (!text) {
             this.outputText.textContent = ''
+            this.detectedLangBadge.textContent = ''
             return
         }
 
-        this.outputText.textContent = 'Traduciendo...'
+        this.outputText.innerHTML = '<span class="loading">Traduciendo...</span>'
 
         if (this.sourceLanguage.value === 'auto') {
             const detectedLanguage = await this.detectLanguage(text)
@@ -120,13 +208,57 @@ class GoogleTranslator {
         try {
             const translation = await this.getTranslation(text)
             this.outputText.textContent = translation
+            this.addToHistory(text, translation)
         } catch (error) {
             console.error(error)
-            const hasSupport = this.checkAPISupport()
-            this.outputText.textContent = hasSupport
-                ? 'Error al traducir'
-                : '¡Error! No tienes soporte nativo a la API de traducción con IA'
+            this.outputText.textContent = error.message || GoogleTranslator.ERROR_MESSAGES.GENERIC
         }
+    }
+
+    getCacheKey(source, target, text) {
+        return `${source}:${target}:${text}`
+    }
+
+    initCache() {
+        try {
+            const stored = localStorage.getItem('translationCache')
+            this.translationCache = stored ? new Map(Object.entries(JSON.parse(stored))) : new Map()
+        } catch {
+            this.translationCache = new Map()
+        }
+    }
+
+    saveCache() {
+        try {
+            const obj = Object.fromEntries(this.translationCache)
+            if (obj.size > 500) {
+                const keys = Object.keys(obj).slice(0, 300)
+                const trimmed = {}
+                for (const k of keys) trimmed[k] = obj[k]
+                localStorage.setItem('translationCache', JSON.stringify(trimmed))
+            } else {
+                localStorage.setItem('translationCache', JSON.stringify(obj))
+            }
+        } catch {
+        }
+    }
+
+    getFromCache(key) {
+        return this.translationCache?.get(key) ?? null
+    }
+
+    setCache(key, value) {
+        if (!this.translationCache) this.initCache()
+        this.translationCache.set(key, value)
+        this.saveCache()
+    }
+
+    async translateWithMyMemory(text, sourceLanguage, targetLanguage) {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLanguage}|${targetLanguage}`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('MyMemory API error')
+        const data = await response.json()
+        return data.responseData.translatedText
     }
 
     async getTranslation(text) {
@@ -138,39 +270,117 @@ class GoogleTranslator {
         const targetLanguage = this.targetLanguage.value
         if (sourceLanguage === targetLanguage) return text
 
-        // 1️. Verificar disponibilidad del modelo
-        try {
-            const status = await window.Translator.availability({ sourceLanguage, targetLanguage })
-            if (status === 'unavailable') throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
-        } catch (error) {
-            console.error(error)
-            throw new Error(`Traducción de ${sourceLanguage} a ${targetLanguage} no disponible`)
-        }
+        const cacheKey = this.getCacheKey(sourceLanguage, targetLanguage, text)
+        const cached = this.getFromCache(cacheKey)
+        if (cached) return cached
 
-        // 2️. Realizar la traducción
-        const translatorKey = `${sourceLanguage}-${targetLanguage}`
-
-        try {
-            if (!this.currentTranslator || this.currentTranslatorKey !== translatorKey) {
-                this.currentTranslator = await window.Translator.create({
-                    sourceLanguage,
-                    targetLanguage,
-                    monitor: (monitor) => {
-                        monitor.addEventListener('downloadprogress', (e) => {
-                            this.outputText.innerHTML = `<span class="loading">
-                                Descargando modelo: ${Math.floor(e.loaded * 100)}%
-                            </span>`
-                        })
-                    }
-                })
+        if (this.hasNativeTranslator && this.hasNativeDetector) {
+            try {
+                const status = await window.Translator.availability({ sourceLanguage, targetLanguage })
+                if (status === 'unavailable') {
+                    throw new Error(GoogleTranslator.ERROR_MESSAGES.MODEL_UNAVAILABLE)
+                }
+            } catch (error) {
+                if (error.message === GoogleTranslator.ERROR_MESSAGES.MODEL_UNAVAILABLE) throw error
+                throw new Error(GoogleTranslator.ERROR_MESSAGES.API_UNAVAILABLE)
             }
 
-            this.currentTranslatorKey = translatorKey
-            return await this.currentTranslator.translate(text)
-        } catch (error) {
-            console.error(error)
-            return 'Error al traducir'
+            const translatorKey = `${sourceLanguage}-${targetLanguage}`
+
+            try {
+                let translator = this.translatorPool.get(translatorKey)
+                if (!translator) {
+                    translator = await window.Translator.create({
+                        sourceLanguage,
+                        targetLanguage,
+                        monitor: (monitor) => {
+                            monitor.addEventListener('downloadprogress', (e) => {
+                                this.outputText.innerHTML = `<span class="loading">
+                                    Descargando modelo: ${Math.floor(e.loaded * 100)}%
+                                </span>`
+                            })
+                        }
+                    })
+                    this.translatorPool.set(translatorKey, translator)
+                }
+
+                const result = await translator.translate(text)
+                this.setCache(cacheKey, result)
+                return result
+            } catch {
+                console.warn('API nativa falló, usando MyMemory fallback')
+            }
         }
+
+        try {
+            const fallback = await this.translateWithMyMemory(text, sourceLanguage, targetLanguage)
+            this.setCache(cacheKey, fallback)
+            return fallback
+        } catch {
+            throw new Error(GoogleTranslator.ERROR_MESSAGES.FALLBACK_FAILED)
+        }
+    }
+
+    // HISTORIAL
+    addToHistory(input, output) {
+        const source = this.sourceLanguage.value === 'auto'
+            ? (this.detectedLangBadge.textContent.match(/\((.+)\)/)?.[1] ?? 'Detectar')
+            : this.sourceLanguage.options[this.sourceLanguage.selectedIndex]?.text ?? this.sourceLanguage.value
+        const target = this.targetLanguage.options[this.targetLanguage.selectedIndex]?.text ?? this.targetLanguage.value
+
+        let history = []
+        try {
+            history = JSON.parse(localStorage.getItem('translationHistory') ?? '[]')
+        } catch { history = [] }
+
+        history.unshift({ input, output, source, target, timestamp: Date.now() })
+        if (history.length > 20) history = history.slice(0, 20)
+
+        localStorage.setItem('translationHistory', JSON.stringify(history))
+        this.renderHistory()
+    }
+
+    renderHistory() {
+        if (!this.historyPanel) return
+        let history = []
+        try {
+            history = JSON.parse(localStorage.getItem('translationHistory') ?? '[]')
+        } catch { history = [] }
+
+        if (history.length === 0) {
+            this.historyPanel.innerHTML = '<div class="history-empty">Sin traducciones recientes</div>'
+            return
+        }
+
+        this.historyPanel.innerHTML = history.map((entry, i) => `
+            <div class="history-item" data-index="${i}">
+                <div class="history-lang">${entry.source} → ${entry.target}</div>
+                <div class="history-input">${this.escapeHtml(entry.input)}</div>
+                <div class="history-output">${this.escapeHtml(entry.output)}</div>
+            </div>
+        `).join('')
+
+        this.historyPanel.querySelectorAll('.history-item').forEach((el) => {
+            el.addEventListener('click', () => {
+                const entry = history[el.dataset.index]
+                if (entry) {
+                    this.inputText.value = entry.input
+                    this.updateCharCounter()
+                    this.outputText.textContent = entry.output
+                }
+            })
+        })
+    }
+
+    toggleHistory() {
+        const isVisible = this.historyPanel.classList.toggle('visible')
+        this.historyToggle.classList.toggle('active', isVisible)
+    }
+
+    escapeHtml(str) {
+        const div = document.createElement('div')
+        div.textContent = str
+        return div.innerHTML
     }
 
     // INTERCAMBIO DE IDIOMAS

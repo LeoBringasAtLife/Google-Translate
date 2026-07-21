@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traductor Inteligente</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+    <meta name="description" content="Traductor Inteligente - Traducción con IA en el navegador">
+    <meta property="og:title" content="Traductor Inteligente">
+    <meta property="og:description" content="Traducción con IA en el navegador, sin servidores">
+    <meta name="theme-color" content="#ffffff">
     <script type="module" src="scripts.js"></script>
 </head>
 
@@ -22,6 +28,9 @@
                     <span class="e">e</span>
                     <span class="traductor">Traductor</span>
                 </div>
+                <button class="icon-button theme-toggle" id="themeToggle" title="Cambiar tema">
+                    <span class="material-symbols-outlined">dark_mode</span>
+                </button>
             </div>
         </header>
 
@@ -65,15 +74,21 @@
         <main class="translation-area">
             <section class="input-section">
                 <div class="textarea-container">
+                    <div class="detected-language" id="detectedLangBadge"></div>
                     <textarea id="inputText" placeholder="Escribe o pega el texto aquí..." maxlength="5000"></textarea>
                 </div>
                 <footer class="input-controls">
-                    <button class="icon-button mic-button" id="micButton" title="Dictar">
-                        <span class="material-symbols-outlined">mic</span>
-                    </button>
-                    <button class="icon-button clear-button" id="clearButton" title="Borrar">
-                        <span class="material-symbols-outlined">backspace</span>
-                    </button>
+                    <div class="input-controls-left">
+                        <span class="char-counter" id="charCounter">0 / 5000</span>
+                    </div>
+                    <div class="input-controls-right">
+                        <button class="icon-button mic-button" id="micButton" title="Dictar (Ctrl+M)">
+                            <span class="material-symbols-outlined">mic</span>
+                        </button>
+                        <button class="icon-button clear-button" id="clearButton" title="Borrar (Ctrl+L)">
+                            <span class="material-symbols-outlined">backspace</span>
+                        </button>
+                    </div>
                 </footer>
             </section>
 
@@ -81,8 +96,11 @@
                 <div class="textarea-container">
                     <output id="outputText"></output>
                     <footer class="output-controls">
-                        <button class="icon-button copy-button" id="copyButton" title="Copiar texto">
+                        <button class="icon-button copy-button" id="copyButton" title="Copiar texto (Ctrl+Shift+C)">
                             <span class="material-symbols-outlined">content_copy</span>
+                        </button>
+                        <button class="icon-button history-toggle" id="historyToggle" title="Historial">
+                            <span class="material-symbols-outlined">history</span>
                         </button>
                         <button class="icon-button speaker-button" id="speakerButton" title="Escuchar traducción">
                             <span class="material-symbols-outlined">volume_up</span>
@@ -91,6 +109,15 @@
                 </div>
             </section>
         </main>
+
+        <section class="history-section" id="historyPanel">
+            <div class="history-empty">Sin traducciones recientes</div>
+        </section>
     </div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+        }
+    </script>
 </body>
 </html>
