@@ -11,7 +11,6 @@ class GoogleTranslator {
         de: 'de-DE',
         it: 'it-IT',
         pt: 'pt-PT',
-        ru: 'ru-RU',
         ja: 'ja-JP',
         zh: 'zh-CN'
     }
@@ -19,7 +18,6 @@ class GoogleTranslator {
     static DEFAULT_SOURCE_LANGUAGE = 'es'
     static DEFAULT_TARGET_LANGUAGE = 'en'
 
-    // INICIALIZACIÓN
     constructor() {
         this.init()
         this.setupEventListeners()
@@ -31,7 +29,6 @@ class GoogleTranslator {
     }
 
     init() {
-        // Elementos del DOM
         this.inputText = $('#inputText')
         this.outputText = $('#outputText')
         this.sourceLanguage = $('#sourceLanguage')
@@ -42,25 +39,22 @@ class GoogleTranslator {
         this.swapLanguagesButton = $('#swapLanguages')
         this.clearButton = $('#clearButton')
 
-        // Configuración inicial
         this.targetLanguage.value = GoogleTranslator.DEFAULT_TARGET_LANGUAGE
 
-        // Verificar soporte API
         this.checkAPISupport()
     }
 
-    // VERIFICACIÓN DE APIs
     checkAPISupport() {
         this.hasNativeTranslator = 'Translator' in window
         this.hasNativeDetector = 'LanguageDetector' in window
 
         if (!this.hasNativeTranslator || !this.hasNativeDetector) {
-            console.warn('⚠️ APIs nativas de traducción o detección NO soportadas.')
+            console.warn('APIs nativas de traducción o detección NO soportadas.')
             this.showAPIWarning()
             return false
         }
 
-        console.log('✅ APIs nativas de IA disponibles')
+        console.log('APIs nativas de IA disponibles')
         return true
     }
 
@@ -69,7 +63,6 @@ class GoogleTranslator {
         warning.style.display = 'block'
     }
 
-    // EVENTOS
     setupEventListeners() {
         this.inputText.addEventListener('input', () => this.debounceTranslate())
         this.sourceLanguage.addEventListener('change', () => this.translate())
@@ -83,14 +76,12 @@ class GoogleTranslator {
         this.clearButton.addEventListener('click', () => this.clearText())
     }
 
-    // ClearButton
     clearText() {
         this.inputText.value = ''
         this.outputText.textContent = ''
         this.sourceLanguage.value = GoogleTranslator.DEFAULT_SOURCE_LANGUAGE
         this.targetLanguage.value = GoogleTranslator.DEFAULT_TARGET_LANGUAGE
 
-        // Restablecer texto de "Detectar idioma"
         const autoOption = this.sourceLanguage.querySelector(`option[value="auto"]`)
         if (autoOption) autoOption.textContent = 'Detectar idioma'
 
@@ -99,7 +90,6 @@ class GoogleTranslator {
 
     }
 
-    // FUNCIONES DE TRADUCCIÓN
     debounceTranslate() {
         clearTimeout(this.translationTimeout)
         this.translationTimeout = setTimeout(() => this.translate(), 500)
